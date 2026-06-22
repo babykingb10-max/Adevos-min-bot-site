@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Adevos Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --g:#22c55e;--g2:#16a34a;--glow:rgba(34,197,94,.25);--glow2:rgba(34,197,94,.08);
+  --bg:#040a04;--bg2:#081008;--card:#0f1f0f;--card2:#111f11;
+  --border:rgba(34,197,94,.14);--border2:rgba(34,197,94,.32);
+  --text:#e2f5e2;--text2:#a3c4a3;--text3:#5a7a5a;--white:#f0faf0;
+  --red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--tg:#229ED9;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;max-width:100vw;overflow-x:hidden;}
+body{font-family:"Inter",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(rgba(34,197,94,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(34,197,94,.018) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0;}
+::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--g2);border-radius:2px;}
+
+/* LOGIN */
+.login-wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;background:var(--bg);}
+.login-box{background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:32px 24px;width:92%;max-width:360px;position:relative;overflow:hidden;}
+.login-box::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
+.login-logo{text-align:center;margin-bottom:20px;}
+.login-logo h1{font-family:"Orbitron",monospace;font-size:16px;font-weight:900;color:var(--g);text-shadow:0 0 15px var(--glow);}
+.login-logo p{font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--text3);letter-spacing:2px;margin-top:4px;}
+.fl{display:block;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:6px;margin-top:14px;}
+.fi{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:"JetBrains Mono",monospace;font-size:14px;padding:12px 14px;outline:none;transition:border-color .2s;}
+.fi:focus{border-color:var(--border2);}
+.login-btn{width:100%;margin-top:20px;padding:14px;background:var(--g);color:#000;border:none;border-radius:10px;cursor:pointer;font-family:"Orbitron",monospace;font-size:11px;font-weight:700;letter-spacing:2px;transition:all .25s;}
+.login-btn:hover{box-shadow:0 0 20px var(--glow);}
+.login-err{display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--red);}
+.login-err.show{display:block;}
+
+/* ADMIN WRAP */
+.admin-wrap{display:none;min-height:100vh;}
+.admin-wrap.show{display:block;}
+
+/* TOPBAR */
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:52px;background:rgba(4,10,4,.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+.tb-left{display:flex;align-items:center;gap:8px;}
+.tb-title{font-family:"Orbitron",monospace;font-size:12px;font-weight:700;color:var(--g);letter-spacing:1px;}
+.tb-badge{font-family:"JetBrains Mono",monospace;font-size:8px;color:var(--text3);background:var(--glow2);border:1px solid var(--border);padding:2px 6px;border-radius:10px;letter-spacing:1px;}
+.tb-right{display:flex;align-items:center;gap:8px;}
+.back-btn{padding:6px 10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px;color:var(--g);font-family:"JetBrains Mono",monospace;font-size:10px;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:4px;}
+.logout-btn{padding:6px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:var(--red);font-family:"JetBrains Mono",monospace;font-size:10px;cursor:pointer;}
+.ham-btn{width:34px;height:34px;background:var(--card);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;flex-shrink:0;}
+.ham-btn span{display:block;width:14px;height:1.5px;background:var(--g);}
+
+/* REFRESH BAR */
+.refresh-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;background:rgba(34,197,94,.04);border-bottom:1px solid var(--border);}
+.refresh-txt{font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--text3);letter-spacing:1px;}
+.refresh-dot{width:6px;height:6px;background:var(--g);border-radius:50%;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* DRAWER */
+.drawer{position:fixed;top:0;right:0;bottom:0;width:240px;z-index:200;background:var(--bg2);border-left:1px solid var(--border);transform:translateX(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);}
+.drawer.open{transform:translateX(0);}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
+.drawer-title{font-family:"JetBrains Mono",monospace;font-size:9px;font-weight:700;color:var(--text3);letter-spacing:2px;}
+.drawer-close{width:26px;height:26px;background:var(--card);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:var(--text3);}
+.drawer-item{display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);border-left:2px solid transparent;transition:all .2s;}
+.drawer-item:hover,.drawer-item.act{color:var(--g);background:var(--glow2);border-left-color:var(--g);}
+.drawer-div{height:1px;background:var(--border);margin:6px 16px;}
+.overlay{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .3s;}
+.overlay.open{opacity:1;pointer-events:all;}
+
+/* PAGE INDICATOR */
+.page-indicator{padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.pi-title{font-family:"Orbitron",monospace;font-size:10px;font-weight:700;color:var(--g);letter-spacing:1px;}
+.pi-count{font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--text3);}
+
+/* PAGES */
+.apage{display:none;padding:14px;position:relative;z-index:1;}
+.apage.act{display:block;}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;position:relative;overflow:hidden;}
+.stat-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;}
+.stat-card.green::before{background:linear-gradient(90deg,transparent,var(--g),transparent);}
+.stat-card.blue::before{background:linear-gradient(90deg,transparent,var(--blue),transparent);}
+.stat-card.yellow::before{background:linear-gradient(90deg,transparent,var(--yellow),transparent);}
+.stat-card.red::before{background:linear-gradient(90deg,transparent,var(--red),transparent);}
+.stat-card.teal::before{background:linear-gradient(90deg,transparent,var(--tg),transparent);}
+.stat-val{font-family:"Orbitron",monospace;font-size:22px;font-weight:900;color:var(--white);}
+.stat-lbl{font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--text3);letter-spacing:1px;margin-top:3px;}
+.stat-sub{font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--g);margin-top:3px;}
+
+/* SESSION CAPACITY BAR */
+.cap-bar-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;}
+.cap-bar-title{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+.cap-bar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:6px;}
+.cap-bar-track{height:8px;background:rgba(34,197,94,.08);border-radius:4px;overflow:hidden;}
+.cap-bar-fill{height:100%;border-radius:4px;transition:width 1s;}
+.cap-bar-fill.low{background:linear-gradient(90deg,var(--g2),var(--g));}
+.cap-bar-fill.mid{background:linear-gradient(90deg,var(--yellow),#f59e0b);}
+.cap-bar-fill.high{background:linear-gradient(90deg,#dc2626,var(--red));}
+.cap-breakdown{display:flex;gap:12px;margin-top:10px;flex-wrap:wrap;}
+.cap-item{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--text3);}
+.cap-item span{color:var(--text2);font-weight:600;}
+
+/* SERVER OVERVIEW */
+.srv-overview-card{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden;}
+.srv-ov-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.srv-ov-title{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;}
+.srv-ov-online{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--g);}
+.srv-ov-row{padding:14px;}
+.srv-ov-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.srv-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.srv-dot.online{background:var(--g);box-shadow:0 0 6px var(--g);}
+.srv-dot.offline{background:var(--red);}
+.srv-ov-name{font-family:"JetBrains Mono",monospace;font-size:13px;color:var(--white);flex:1;font-weight:600;}
+.srv-ov-total{font-family:"Orbitron",monospace;font-size:14px;font-weight:700;color:var(--g);}
+.srv-ov-status{font-family:"JetBrains Mono",monospace;font-size:9px;padding:2px 7px;border-radius:4px;}
+.srv-ov-status.online{background:rgba(34,197,94,.1);color:var(--g);border:1px solid rgba(34,197,94,.2);}
+.srv-ov-status.offline{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.srv-ov-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.bd-item{background:var(--bg2);border-radius:8px;padding:8px 10px;text-align:center;}
+.bd-val{font-family:"Orbitron",monospace;font-size:14px;font-weight:700;}
+.bd-lbl{font-family:"JetBrains Mono",monospace;font-size:8px;color:var(--text3);margin-top:2px;letter-spacing:1px;}
+.bd-val.wa{color:var(--g);}
+.bd-val.tg{color:var(--tg);}
+.bd-val.act{color:var(--yellow);}
+.srv-bar-track{height:5px;background:rgba(34,197,94,.08);border-radius:3px;overflow:hidden;}
+.srv-bar-fill{height:100%;background:linear-gradient(90deg,var(--g2),var(--g));border-radius:3px;}
+
+/* SECTION */
+.sec{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden;}
+.sec-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.sec-title{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;}
+
+/* CLEAN BUTTON (in section head) */
+.clean-btn{padding:5px 10px;border-radius:6px;font-family:"JetBrains Mono",monospace;font-size:10px;cursor:pointer;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:var(--red);transition:all .2s;}
+.clean-btn:hover{background:rgba(239,68,68,.16);}
+
+/* PAIR CARDS */
+.pair-card{padding:11px 14px;border-bottom:1px solid rgba(34,197,94,.04);}
+.pair-card:last-child{border-bottom:none;}
+.pair-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.pair-num{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--white);font-weight:600;}
+.pair-card-bot{display:flex;align-items:center;justify-content:space-between;}
+.pair-info{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--text3);}
+.pair-source{font-family:"JetBrains Mono",monospace;font-size:9px;padding:2px 6px;border-radius:3px;}
+.pair-source.website{background:rgba(34,197,94,.1);color:var(--g);border:1px solid rgba(34,197,94,.2);}
+.pair-source.telegram{background:rgba(34,158,217,.1);color:var(--tg);border:1px solid rgba(34,158,217,.2);}
+
+/* SESSION CARD */
+.session-card{padding:11px 14px;border-bottom:1px solid rgba(34,197,94,.04);display:flex;align-items:center;gap:8px;}
+.session-card:last-child{border-bottom:none;}
+.sess-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.sess-dot.active{background:var(--g);box-shadow:0 0 5px var(--g);}
+.sess-dot.inactive{background:var(--text3);}
+.sess-left{flex:1;min-width:0;}
+.sess-id{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--white);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sess-meta{font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--text3);margin-top:2px;}
+.sess-badge{font-family:"JetBrains Mono",monospace;font-size:8px;padding:2px 6px;border-radius:3px;flex-shrink:0;}
+.sess-badge.active{background:rgba(34,197,94,.1);color:var(--g);border:1px solid rgba(34,197,94,.2);}
+.sess-badge.inactive{background:rgba(90,122,90,.1);color:var(--text3);border:1px solid rgba(90,122,90,.2);}
+
+/* USER CARD */
+.user-card{padding:11px 14px;border-bottom:1px solid rgba(34,197,94,.04);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.user-card:last-child{border-bottom:none;}
+.user-left{min-width:0;}
+.user-num{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--white);font-weight:600;}
+.user-meta{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--text3);margin-top:2px;}
+.user-actions{display:flex;gap:6px;flex-shrink:0;}
+
+/* BADGES */
+.badge{padding:3px 7px;border-radius:4px;font-size:9px;font-family:"JetBrains Mono",monospace;font-weight:600;}
+.badge.ok{background:rgba(34,197,94,.1);color:var(--g);border:1px solid rgba(34,197,94,.2);}
+.badge.err{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.badge.warn{background:rgba(245,158,11,.1);color:var(--yellow);border:1px solid rgba(245,158,11,.2);}
+
+/* BUTTONS */
+.btn{padding:5px 10px;border-radius:6px;font-family:"JetBrains Mono",monospace;font-size:10px;cursor:pointer;transition:all .2s;border:1px solid;}
+.btn-red{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--red);}
+.btn-red:hover{background:rgba(239,68,68,.16);}
+.btn-green{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.25);color:var(--g);}
+.btn-green:hover{background:rgba(34,197,94,.16);}
+.btn-blue{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.25);color:var(--blue);}
+
+/* BLOCK FORM */
+.block-form{padding:12px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+.block-form input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:"JetBrains Mono",monospace;font-size:13px;padding:10px 12px;outline:none;}
+.block-form input:focus{border-color:var(--border2);}
+.block-form button{width:100%;padding:11px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;color:var(--red);font-family:"JetBrains Mono",monospace;font-size:11px;cursor:pointer;letter-spacing:1px;}
+.block-form button:hover{background:rgba(239,68,68,.25);}
+
+/* BLOCKED CARD */
+.blocked-card{padding:11px 14px;border-bottom:1px solid rgba(34,197,94,.04);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.blocked-card:last-child{border-bottom:none;}
+.blocked-num{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--red);}
+.blocked-meta{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--text3);margin-top:2px;}
+
+/* CHART */
+.chart-wrap{padding:14px;}
+.chart-bars{display:flex;align-items:flex-end;gap:5px;height:100px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bar{width:100%;background:linear-gradient(180deg,var(--g),var(--g2));border-radius:3px 3px 0 0;min-height:4px;transition:height .8s cubic-bezier(.16,1,.3,1);}
+.bar-lbl{font-family:"JetBrains Mono",monospace;font-size:7px;color:var(--text3);}
+.bar-val{font-family:"JetBrains Mono",monospace;font-size:8px;color:var(--g);}
+
+/* SEARCH */
+.search-row{padding:10px 14px;border-bottom:1px solid var(--border);}
+.search-input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:"JetBrains Mono",monospace;font-size:12px;padding:9px 12px;outline:none;}
+.search-input:focus{border-color:var(--border2);}
+
+/* CLEAN RESULT */
+.clean-result{padding:12px 14px;background:rgba(34,197,94,.04);border-top:1px solid var(--border);font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--text2);}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:10px 18px;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--g);z-index:9999;opacity:0;transition:all .3s;pointer-events:none;max-width:90vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.err{border-color:rgba(239,68,68,.4);color:var(--red);}
+
+.empty{padding:28px;text-align:center;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--text3);}
+.loading{padding:20px;text-align:center;font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--text3);letter-spacing:2px;}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>ADMIN PANEL</h1>
+      <p>ADEVOS-X TECH · SECURE ACCESS</p>
+    </div>
+    <label class="fl">Username</label>
+    <input class="fi" type="text" id="loginUser" placeholder="Enter username" autocomplete="off">
+    <label class="fl">Password</label>
+    <input class="fi" type="password" id="loginPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">LOGIN</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN ═══ -->
+<div class="admin-wrap" id="adminWrap">
+
+  <div class="topbar">
+    <div class="tb-left">
+      <span class="tb-title">ADMIN</span>
+      <span class="tb-badge">ADEVOS-X TECH</span>
+    </div>
+    <div class="tb-right">
+      <a class="back-btn" href="/">← Site</a>
+      <button class="logout-btn" onclick="doLogout()">LOGOUT</button>
+      <div class="ham-btn" onclick="openDrawer()"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+  <div class="refresh-bar">
+    <span class="refresh-txt">AUTO-REFRESH EVERY 60s</span>
+    <div class="refresh-dot"></div>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+
+  <div class="drawer" id="drawer">
+    <div class="drawer-head">
+      <span class="drawer-title">NAVIGATION</span>
+      <div class="drawer-close" onclick="closeDrawer()">✕</div>
+    </div>
+    <div class="drawer-item act" id="di-dashboard"  onclick="goTab('dashboard')">📊 Dashboard</div>
+    <div class="drawer-item"     id="di-servers"    onclick="goTab('servers')">🖥️ Server Overview</div>
+    <div class="drawer-item"     id="di-sessions"   onclick="goTab('sessions')">📱 Sessions</div>
+    <div class="drawer-item"     id="di-users"      onclick="goTab('users')">👥 Users</div>
+    <div class="drawer-item"     id="di-blocked"    onclick="goTab('blocked')">🚫 Blocked Numbers</div>
+    <div class="drawer-item"     id="di-analytics"  onclick="goTab('analytics')">📈 Analytics</div>
+    <div class="drawer-div"></div>
+    <div class="drawer-item" onclick="doLogout()">🚪 Logout</div>
+  </div>
+
+  <div class="page-indicator">
+    <span class="pi-title" id="piTitle">DASHBOARD</span>
+    <span class="pi-count" id="piRefreshCount"></span>
+  </div>
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <div class="apage act" id="tab-dashboard">
+
+    <!-- Stats grid: 6 cards (2 new: sessions + active) -->
+    <div class="stats-grid">
+      <div class="stat-card green"><div class="stat-val" id="st-users">—</div><div class="stat-lbl">TOTAL USERS</div></div>
+      <div class="stat-card blue"><div class="stat-val" id="st-today">—</div><div class="stat-lbl">TODAY</div></div>
+      <div class="stat-card yellow"><div class="stat-val" id="st-sessions">—</div><div class="stat-lbl">SESSIONS</div><div class="stat-sub" id="st-sessions-sub">loading...</div></div>
+      <div class="stat-card teal"><div class="stat-val" id="st-active">—</div><div class="stat-lbl">ACTIVE NOW</div></div>
+      <div class="stat-card"><div class="stat-val" id="st-total">—</div><div class="stat-lbl">TOTAL REQUESTS</div></div>
+      <div class="stat-card red"><div class="stat-val" id="st-online">—</div><div class="stat-lbl">SERVER STATUS</div></div>
+    </div>
+
+    <!-- Session capacity bar (new) -->
+    <div class="cap-bar-wrap">
+      <div class="cap-bar-title">Session Capacity</div>
+      <div class="cap-bar-row">
+        <span id="capLabel">Loading...</span>
+        <span id="capPct" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--g);">0%</span>
+      </div>
+      <div class="cap-bar-track">
+        <div class="cap-bar-fill low" id="capBarFill" style="width:0%"></div>
+      </div>
+      <div class="cap-breakdown">
+        <div class="cap-item">Website: <span id="capWa">—</span></div>
+        <div class="cap-item">Telegram: <span id="capTg">—</span></div>
+        <div class="cap-item">Registered: <span id="capReg">—</span></div>
+        <div class="cap-item">Max: <span id="capMax">—</span></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><span class="sec-title">Recent Pairings</span></div>
+      <div id="recentList" class="loading">Loading...</div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><span class="sec-title">Server Usage</span></div>
+      <div id="serverStats"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ SERVER OVERVIEW ═══ -->
+  <div class="apage" id="tab-servers">
+    <div id="serversOverview"><div class="loading">Loading...</div></div>
+  </div>
+
+  <!-- ═══ SESSIONS (NEW TAB) ═══ -->
+  <div class="apage" id="tab-sessions">
+    <div class="sec">
+      <div class="sec-head">
+        <span class="sec-title">WhatsApp Sessions</span>
+        <button class="clean-btn" onclick="cleanSessions()">🧹 Clean Dead</button>
+      </div>
+      <div class="search-row">
+        <input class="search-input" type="tel" id="sessSearch" placeholder="Search by number..." oninput="filterSessions(this.value)">
+      </div>
+      <div id="sessionsList" class="loading">Loading...</div>
+    </div>
+    <div class="clean-result" id="cleanResult" style="display:none;"></div>
+  </div>
+
+  <!-- ═══ USERS ═══ -->
+  <div class="apage" id="tab-users">
+    <div class="sec">
+      <div class="sec-head">
+        <span class="sec-title">All Users</span>
+        <span id="usersCount" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--g);"></span>
+      </div>
+      <div class="search-row">
+        <input class="search-input" type="tel" id="userSearch" placeholder="Search by number..." oninput="filterUsers(this.value)">
+      </div>
+      <div id="usersList" class="loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- ═══ BLOCKED ═══ -->
+  <div class="apage" id="tab-blocked">
+    <div class="sec">
+      <div class="sec-head"><span class="sec-title">Block a Number</span></div>
+      <div class="block-form">
+        <input type="tel" id="blockNum" placeholder="255700123456" oninput="this.value=this.value.replace(/\D/g,'')">
+        <input type="text" id="blockReason" placeholder="Reason (optional)">
+        <button onclick="blockNumber()">BLOCK NUMBER</button>
+      </div>
+    </div>
+    <div class="sec" style="margin-top:12px;">
+      <div class="sec-head"><span class="sec-title">Blocked Numbers</span></div>
+      <div id="blockedList" class="loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- ═══ ANALYTICS ═══ -->
+  <div class="apage" id="tab-analytics">
+    <div class="sec">
+      <div class="sec-head"><span class="sec-title">Pairings — Last 7 Days</span></div>
+      <div class="chart-wrap">
+        <div class="chart-bars" id="chartBars"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SERVER_URL = '';
+let token           = localStorage.getItem('adminToken') || null;
+let allUsers        = [];
+let allSessions     = [];
+let refreshInterval = null;
+let refreshCount    = 0;
+let currentTab      = 'dashboard';
+
+const tabTitles = {
+  dashboard: 'DASHBOARD',
+  servers:   'SERVER OVERVIEW',
+  sessions:  'SESSIONS',
+  users:     'USERS',
+  blocked:   'BLOCKED NUMBERS',
+  analytics: 'ANALYTICS'
+};
+
+window.onload = () => { if (token) showAdmin(); };
+
+// ─── Auth ──────────────────────────────────────────────────────
+
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value.trim();
+  const err      = document.getElementById('loginErr');
+  if (!username || !password) { err.textContent='Enter username and password'; err.classList.add('show'); return; }
+
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      token = data.token; localStorage.setItem('adminToken', token);
+      err.classList.remove('show'); showAdmin();
+    } else {
+      err.textContent = data.message || 'Login failed'; err.classList.add('show');
+    }
+  } catch (e) { err.textContent = 'Server error. Try again.'; err.classList.add('show'); }
+}
+
+function doLogout() {
+  token = null; localStorage.removeItem('adminToken');
+  if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
+  document.getElementById('adminWrap').classList.remove('show');
+  document.getElementById('loginWrap').style.display = 'flex';
+}
+
+function showAdmin() {
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('adminWrap').classList.add('show');
+  loadDashboard();
+  refreshInterval = setInterval(() => {
+    refreshCount++;
+    document.getElementById('piRefreshCount').textContent = 'Refreshed ' + refreshCount + 'x';
+    if (currentTab === 'dashboard') loadDashboard();
+    if (currentTab === 'servers')   loadServers();
+    if (currentTab === 'sessions')  loadSessions();
+  }, 60000);
+}
+
+function openDrawer()  { document.getElementById('drawer').classList.add('open');    document.getElementById('overlay').classList.add('open');    }
+function closeDrawer() { document.getElementById('drawer').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+
+function goTab(name) {
+  closeDrawer();
+  currentTab = name;
+  document.querySelectorAll('.apage').forEach(p => p.classList.remove('act'));
+  document.querySelectorAll('.drawer-item').forEach(i => i.classList.remove('act'));
+  document.getElementById('tab-' + name).classList.add('act');
+  document.getElementById('di-' + name).classList.add('act');
+  document.getElementById('piTitle').textContent = tabTitles[name];
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'servers')   loadServers();
+  if (name === 'sessions')  loadSessions();
+  if (name === 'users')     loadUsers();
+  if (name === 'blocked')   loadBlocked();
+  if (name === 'analytics') loadAnalytics();
+}
+
+// ─── Helpers ───────────────────────────────────────────────────
+
+function shortNum(n) {
+  if (!n) return '—';
+  const s = String(n);
+  return s.length <= 12 ? '+' + s : '+' + s.slice(0, 4) + '...' + s.slice(-4);
+}
+
+function timeStr(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function timeAgo(ts) {
+  if (!ts) return 'never';
+  const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (diff < 60)   return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400)return Math.floor(diff / 3600) + 'h ago';
+  return Math.floor(diff / 86400) + 'd ago';
+}
+
+function handleAuthError(data) {
+  if (data.message && data.message.includes('Token')) {
+    toast('Session expired. Please login again.', true);
+    setTimeout(doLogout, 1500);
+  }
+}
+
+function toast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast' + (isErr ? ' err' : '');
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── Dashboard ────────────────────────────────────────────────
+
+async function loadDashboard() {
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } });
+    const data = await res.json();
+    if (!data.success) { handleAuthError(data); return; }
+
+    document.getElementById('st-users').textContent   = data.totalUsers;
+    document.getElementById('st-today').textContent   = data.todayRequests;
+    document.getElementById('st-total').textContent   = data.totalRequests;
+    document.getElementById('st-sessions').textContent = data.totalSessions || '—';
+    document.getElementById('st-sessions-sub').textContent = (data.registeredSessions || 0) + ' registered';
+    document.getElementById('st-active').textContent  = data.activeSessions || '—';
+    document.getElementById('st-online').textContent  = data.onlineServers > 0 ? '🟢 Online' : '🔴 Offline';
+
+    // Capacity bar
+    const srv = data.serversOverview?.[0];
+    if (srv) {
+      const maxCap = srv.maxCapacity || 100;
+      const used   = srv.totalPaired || 0;
+      const pct    = Math.min(Math.round((used / maxCap) * 100), 100);
+
+      document.getElementById('capLabel').textContent   = `${used} of ${maxCap} sessions used`;
+      document.getElementById('capPct').textContent     = pct + '%';
+      document.getElementById('capBarFill').style.width = pct + '%';
+      document.getElementById('capBarFill').className   = 'cap-bar-fill ' + (pct > 80 ? 'high' : pct > 60 ? 'mid' : 'low');
+      document.getElementById('capWa').textContent      = srv.websitePaired  || 0;
+      document.getElementById('capTg').textContent      = srv.telegramPaired || 0;
+      document.getElementById('capReg').textContent     = data.registeredSessions || 0;
+      document.getElementById('capMax').textContent     = maxCap;
+    }
+
+    // Recent pairings
+    const rl = document.getElementById('recentList');
+    if (!data.recentList?.length) {
+      rl.innerHTML = '<div class="empty">No pairings yet</div>';
+    } else {
+      rl.innerHTML = data.recentList.map(r => {
+        const status = r.status === 'done'    ? '<span class="badge ok">Done</span>'
+                     : r.status === 'pending' ? '<span class="badge warn">Pending</span>'
+                     : '<span class="badge err">Failed</span>';
+        const src = r.source === 'telegram'
+          ? '<span class="pair-source telegram">Telegram</span>'
+          : '<span class="pair-source website">Website</span>';
+        return `<div class="pair-card">
+          <div class="pair-card-top"><span class="pair-num">${shortNum(r.number)}</span>${status}</div>
+          <div class="pair-card-bot"><span class="pair-info">${timeStr(r.timestamp)}</span>${src}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // Server usage bar
+    const ss     = document.getElementById('serverStats');
+    const stats  = data.serverStats || {};
+    const maxVal = Math.max(...Object.values(stats), 1);
+    ss.innerHTML = Object.entries(stats).map(([name, count]) => {
+      const pct = Math.round((count / maxVal) * 100);
+      return `<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(34,197,94,.04);">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);min-width:100px;">${name}</span>
+        <div style="flex:1;height:5px;background:rgba(34,197,94,.08);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;background:linear-gradient(90deg,var(--g2),var(--g));border-radius:3px;width:${pct}%;"></div>
+        </div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--g);width:24px;text-align:right;">${count}</span>
+      </div>`;
+    }).join('') || '<div class="empty">No data</div>';
+
+  } catch (e) { toast('Dashboard error: ' + e.message, true); }
+}
+
+// ─── Server Overview ──────────────────────────────────────────
+
+async function loadServers() {
+  const so = document.getElementById('serversOverview');
+  so.innerHTML = '<div class="loading">Loading...</div>';
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } });
+    const data = await res.json();
+    if (!data.success) { handleAuthError(data); return; }
+
+    const servers   = data.serversOverview || [];
+    const totalPair = servers.reduce((a, s) => a + s.totalPaired, 0);
+    const online    = servers.filter(s => s.status === 'online').length;
+
+    let html = `<div class="srv-overview-card">
+      <div class="srv-ov-head">
+        <span class="srv-ov-title">Server Overview</span>
+        <span class="srv-ov-online">${online}/${servers.length} Online</span>
+      </div>`;
+
+    servers.forEach(s => {
+      const isOnline = s.status === 'online';
+      const maxCap   = s.maxCapacity || 100;
+      const pct      = Math.min(Math.round((s.totalPaired / maxCap) * 100), 100);
+
+      html += `<div class="srv-ov-row">
+        <div class="srv-ov-top">
+          <div class="srv-dot ${s.status}"></div>
+          <span class="srv-ov-name">${s.name}</span>
+          <span class="srv-ov-total">${s.totalPaired}</span>
+          <span class="srv-ov-status ${s.status}">${isOnline ? 'Online' : 'Offline'}</span>
+        </div>
+        <div class="srv-ov-breakdown">
+          <div class="bd-item"><div class="bd-val wa">${s.websitePaired || 0}</div><div class="bd-lbl">WEBSITE</div></div>
+          <div class="bd-item"><div class="bd-val tg">${s.telegramPaired || 0}</div><div class="bd-lbl">TELEGRAM</div></div>
+          <div class="bd-item"><div class="bd-val act">${s.activeSessions || 0}</div><div class="bd-lbl">ACTIVE</div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-bottom:4px;">
+          <span>Capacity: ${s.totalPaired}/${maxCap}</span><span>${pct}%</span>
+        </div>
+        <div class="srv-bar-track">
+          <div class="srv-bar-fill" style="width:${pct}%;background:${pct>80?'var(--red)':pct>60?'var(--yellow)':'linear-gradient(90deg,var(--g2),var(--g))'}"></div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);margin-top:6px;">
+          Last seen: ${isOnline ? '🟢 Active now' : timeAgo(s.lastSeen)}
+        </div>
+      </div>`;
+    });
+
+    html += '</div>';
+    so.innerHTML = html;
+
+  } catch (e) { toast('Server error: ' + e.message, true); }
+}
+
+// ─── Sessions (NEW) ───────────────────────────────────────────
+
+async function loadSessions() {
+  const sl = document.getElementById('sessionsList');
+  sl.innerHTML = '<div class="loading">Loading...</div>';
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/sessions', { headers: { 'Authorization': 'Bearer ' + token } });
+    const data = await res.json();
+    if (!data.success) { handleAuthError(data); return; }
+
+    allSessions = data.sessions;
+    renderSessions(data.sessions);
+
+  } catch (e) { toast('Sessions error: ' + e.message, true); }
+}
+
+function renderSessions(sessions) {
+  const sl = document.getElementById('sessionsList');
+  if (!sessions.length) { sl.innerHTML = '<div class="empty">No sessions found</div>'; return; }
+
+  sl.innerHTML = sessions.map(s => {
+    const num    = s.sessionId.replace('@s.whatsapp.net', '');
+    const active = s.isActive;
+    const src    = s.source === 'telegram'
+      ? '<span class="pair-source telegram">TG</span>'
+      : '<span class="pair-source website">WA</span>';
+
+    return `<div class="session-card">
+      <div class="sess-dot ${active ? 'active' : 'inactive'}"></div>
+      <div class="sess-left">
+        <div class="sess-id">+${num}</div>
+        <div class="sess-meta">Last seen: ${timeAgo(s.lastSeen)} · ${s.source}</div>
+      </div>
+      ${src}
+      <span class="sess-badge ${active ? 'active' : 'inactive'}">${active ? 'Active' : 'Idle'}</span>
+      <button class="btn btn-red" onclick="deleteSession('${s.sessionId}')">Del</button>
+    </div>`;
+  }).join('');
+}
+
+function filterSessions(query) {
+  if (!query) { renderSessions(allSessions); return; }
+  renderSessions(allSessions.filter(s => s.sessionId.includes(query.replace(/\D/g, ''))));
+}
+
+async function deleteSession(sessionId) {
+  if (!confirm('Delete session ' + sessionId + '?')) return;
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/sessions/' + encodeURIComponent(sessionId), {
+      method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    toast(data.message, !data.success);
+    if (data.success) loadSessions();
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+async function cleanSessions() {
+  const result = document.getElementById('cleanResult');
+  result.style.display = 'none';
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/clean', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ days: 7 })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const d = data.deleted;
+      result.textContent = `✅ Cleaned — Inactive: ${d.inactive} | Logged out: ${d.loggedOut} | Total: ${d.total} | Remaining: ${data.remaining}`;
+      result.style.display = 'block';
+      toast('Cleanup complete: ' + d.total + ' deleted');
+      loadSessions();
+    } else {
+      toast('Clean error: ' + data.message, true);
+    }
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+// ─── Users ────────────────────────────────────────────────────
+
+async function loadUsers() {
+  const ul = document.getElementById('usersList');
+  ul.innerHTML = '<div class="loading">Loading...</div>';
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
+    const data = await res.json();
+    if (!data.success) { handleAuthError(data); return; }
+    allUsers = data.users;
+    document.getElementById('usersCount').textContent = data.users.length + ' users';
+    renderUsers(data.users);
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+function renderUsers(users) {
+  const ul = document.getElementById('usersList');
+  if (!users.length) { ul.innerHTML = '<div class="empty">No users yet</div>'; return; }
+  ul.innerHTML = users.map(u => {
+    const src = u.source === 'telegram'
+      ? '<span class="pair-source telegram">TG</span>'
+      : '<span class="pair-source website">WA</span>';
+    return `<div class="user-card">
+      <div class="user-left">
+        <div class="user-num">${shortNum(u.number)}</div>
+        <div class="user-meta">${u.lastServer || '—'} · ${u.totalPairings || 1}x paired · ${timeAgo(u.lastPaired)}</div>
+      </div>
+      <div class="user-actions">
+        ${src}
+        <button class="btn btn-red" onclick="blockUser('${u.number}')">Block</button>
+        <button class="btn btn-red" onclick="deleteUser('${u.number}')">Del</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterUsers(query) {
+  if (!query) { renderUsers(allUsers); return; }
+  renderUsers(allUsers.filter(u => u.number && u.number.includes(query.replace(/\D/g, ''))));
+}
+
+async function blockUser(number) {
+  if (!confirm('Block ' + number + '?')) return;
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/block', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number, reason: 'Blocked from users list' })
+    });
+    const data = await res.json();
+    toast(data.message, !data.success);
+    if (data.success) loadUsers();
+  } catch { toast('Error', true); }
+}
+
+async function deleteUser(number) {
+  if (!confirm('Delete ' + number + ' permanently?')) return;
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/delete-user', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number })
+    });
+    const data = await res.json();
+    toast(data.message, !data.success);
+    if (data.success) loadUsers();
+  } catch { toast('Error', true); }
+}
+
+// ─── Blocked ──────────────────────────────────────────────────
+
+async function loadBlocked() {
+  const bl = document.getElementById('blockedList');
+  bl.innerHTML = '<div class="loading">Loading...</div>';
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/blocked', { headers: { 'Authorization': 'Bearer ' + token } });
+    const data = await res.json();
+    if (!data.success) { handleAuthError(data); return; }
+    if (!data.blocked.length) { bl.innerHTML = '<div class="empty">No blocked numbers</div>'; return; }
+    bl.innerHTML = data.blocked.map(b => `
+      <div class="blocked-card">
+        <div>
+          <div class="blocked-num">+${b.number}</div>
+          <div class="blocked-meta">${b.reason || '—'} · ${timeStr(b.blockedAt)}</div>
+        </div>
+        <button class="btn btn-green" onclick="unblockNumber('${b.number}')">Unblock</button>
+      </div>`).join('');
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+
+async function blockNumber() {
+  const num    = document.getElementById('blockNum').value.trim();
+  const reason = document.getElementById('blockReason').value.trim();
+  if (!num) { toast('Enter a number', true); return; }
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/block', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number: num, reason: reason || 'Blocked by admin' })
+    });
+    const data = await res.json();
+    toast(data.message, !data.success);
+    if (data.success) { document.getElementById('blockNum').value = ''; document.getElementById('blockReason').value = ''; loadBlocked(); }
+  } catch { toast('Error', true); }
+}
+
+async function unblockNumber(number) {
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/unblock', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number })
+    });
+    const data = await res.json();
+    toast(data.message, !data.success);
+    if (data.success) loadBlocked();
+  } catch { toast('Error', true); }
+}
+
+// ─── Analytics ────────────────────────────────────────────────
+
+async function loadAnalytics() {
+  try {
+    const res  = await fetch(SERVER_URL + '/api/admin/analytics', { headers: { 'Authorization': 'Bearer ' + token } });
+    const data = await res.json();
+    if (!data.success) { handleAuthError(data); return; }
+
+    const days   = data.analytics;
+    const maxVal = Math.max(...Object.values(days), 1);
+
+    document.getElementById('chartBars').innerHTML = Object.entries(days).map(([date, count]) => {
+      const pct    = Math.round((count / maxVal) * 100);
+      const height = Math.max(pct, 4);
+      const label  = date.split('-').slice(1).join('/');
+      return `<div class="bar-col">
+        <span class="bar-val">${count}</span>
+        <div class="bar" style="height:${height}px;"></div>
+        <span class="bar-lbl">${label}</span>
+      </div>`;
+    }).join('');
+
+  } catch (e) { toast('Error: ' + e.message, true); }
+}
+</script>
+</body>
+</html>
