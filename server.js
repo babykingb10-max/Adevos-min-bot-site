@@ -94,6 +94,15 @@ const ServerStatsSchema = new mongoose.Schema({
     lastSeen:       { type: Date, default: Date.now }
 });
 
+const LogSchema = new mongoose.Schema({
+    level:     { type: String, enum: ['info', 'warn', 'error', 'success'], default: 'info' },
+    message:   { type: String, required: true },
+    source:    { type: String, default: 'bot' },
+    meta:      { type: mongoose.Schema.Types.Mixed, default: {} },
+    timestamp: { type: Date, default: Date.now, index: true },
+    expiresAt: { type: Date, default: () => new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) }
+});
+
 // ─── Models ───────────────────────────────────────────────────
 const Session     = mongoose.models.Session     || mongoose.model('Session',     SessionSchema);
 const Pairing     = mongoose.models.Pairing     || mongoose.model('Pairing',     PairingSchema);
@@ -101,6 +110,7 @@ const Request     = mongoose.models.Request     || mongoose.model('Request',    
 const User        = mongoose.models.User        || mongoose.model('User',        UserSchema);
 const Blocked     = mongoose.models.Blocked     || mongoose.model('Blocked',     BlockedSchema);
 const ServerStats = mongoose.models.ServerStats || mongoose.model('ServerStats', ServerStatsSchema);
+const Log         = mongoose.models.Log         || mongoose.model('Log',         LogSchema);
 
 // ─── MongoDB Connection ────────────────────────────────────────
 async function connectDB() {
@@ -138,7 +148,7 @@ function verifyToken(req, res, next) {
 // ─── Helper ───────────────────────────────────────────────────
 function isServerOnline(lastSeen) {
     if (!lastSeen) return false;
-    return (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000; // 5 minutes
+    return (Date.now() - new Date(lastSeen).getTime()) < 8 * 60 * 1000; // 8 minutes (heartbeat is now every 5 min)
 }
 
 // ─── PUBLIC ROUTES ────────────────────────────────────────────
@@ -171,7 +181,9 @@ app.get('/api/public/stats', async (req, res) => {
                 tgBot:              TG_BOT_URL,
                 status:             online ? 'online' : 'offline',
                 lastSeen:           statsDoc?.lastSeen || null,
-                totalPaired:        statsDoc?.totalPaired   || registeredSessions,
+                // Use actual registered session count, not the lifetime
+                // attempt counter (which includes failed pairing attempts)
+                totalPaired:        registeredSessions,
                 websitePaired:      statsDoc?.websitePaired  || 0,
                 telegramPaired:     statsDoc?.telegramPaired || 0,
                 activeSessions,
@@ -357,7 +369,10 @@ app.get('/api/admin/stats', verifyToken, async (req, res) => {
             serversOverview: [{
                 name:           SERVER_NAME,
                 status:         online ? 'online' : 'offline',
-                totalPaired:    statsDoc?.totalPaired    || registeredSessions,
+                // Use actual registered session count for capacity display.
+                // statsDoc.totalPaired is a lifetime attempt counter (includes
+                // failed attempts) and should NOT be used for capacity math.
+                totalPaired:    registeredSessions,
                 websitePaired:  statsDoc?.websitePaired  || 0,
                 telegramPaired: statsDoc?.telegramPaired || 0,
                 activeSessions,
@@ -590,6 +605,64 @@ app.get('/api/admin/debug', verifyToken, async (req, res) => {
             database: { total, active, requests, pending },
             recentErrors: recentErrors.slice(-20)
         });
+    } catch (err) {
+        res.json({ success: false, message: err.message });
+    }
+});
+
+/**
+ * GET /api/admin/logs
+ * Returns recent bot/website logs stored in MongoDB.
+ * This replaces the need to open Render's log dashboard for routine
+ * troubleshooting — saves bandwidth and gives persistent history
+ * that survives service restarts (Render logs reset on each deploy).
+ *
+ * Query params:
+ *   level  - optional filter: 'error' | 'warn' | 'info' | 'success'
+ *   source - optional filter: 'bot' | 'website' | 'pairing'
+ *   limit  - max results, default 100, max 500
+ */
+app.get('/api/admin/logs', verifyToken, async (req, res) => {
+    try {
+        await connectDB();
+
+        const { level, source } = req.query;
+        const limit = Math.min(parseInt(req.query.limit || '100'), 500);
+
+        const query = {};
+        if (level)  query.level  = level;
+        if (source) query.source = source;
+
+        const logs = await Log.find(query)
+            .sort({ timestamp: -1 })
+            .limit(limit)
+            .lean();
+
+        const counts = await Log.aggregate([
+            { $group: { _id: '$level', count: { $sum: 1 } } }
+        ]);
+
+        res.json({
+            success: true,
+            logs,
+            total: logs.length,
+            counts: counts.reduce((acc, c) => { acc[c._id] = c.count; return acc; }, {})
+        });
+
+    } catch (err) {
+        res.json({ success: false, message: err.message });
+    }
+});
+
+/**
+ * DELETE /api/admin/logs
+ * Clear all stored logs (admin only).
+ */
+app.delete('/api/admin/logs', verifyToken, async (req, res) => {
+    try {
+        await connectDB();
+        const result = await Log.deleteMany({});
+        res.json({ success: true, message: `${result.deletedCount} logs cleared` });
     } catch (err) {
         res.json({ success: false, message: err.message });
     }
