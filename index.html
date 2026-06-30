@@ -604,12 +604,23 @@ async function genCode() {
 
     pollInterval = setInterval(async () => {
       attempts++;
-      progTxt.textContent = `Waiting for code... (${attempts * 3}s)`;
+
+      // Show meaningful status messages while waiting
+      const statusMessages = [
+        'Request sent to bot server...',
+        'Bot is generating your code...',
+        'Almost ready...',
+        'Still waiting — bot may be busy...',
+        'Hang tight, nearly there...'
+      ];
+      const msgIdx = Math.min(Math.floor(attempts / 2), statusMessages.length - 1);
+      progTxt.textContent = `${statusMessages[msgIdx]} (${attempts * 3}s)`;
 
       try {
         const codeRes  = await fetch(SERVER_URL + '/api/get-pair-code?number=' + full);
         const codeData = await codeRes.json();
 
+        // Code is ready
         if (codeData.success && codeData.code) {
           clearInterval(pollInterval); pollInterval = null;
           prog.classList.remove('show');
@@ -620,18 +631,35 @@ async function genCode() {
           btn.disabled = false;
           btn.innerHTML = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate New Code';
           toast('Code generated for +' + full);
-          loadStats(); // Refresh stats
+          loadStats();
+          return;
         }
 
+        // Bot reported a failure explicitly
+        if (codeData.status === 'failed') {
+          clearInterval(pollInterval); pollInterval = null;
+          prog.classList.remove('show');
+          errMsg.textContent = codeData.message || 'Pairing failed. Please try again.';
+          errBox.classList.add('show');
+          btn.disabled = false;
+          btn.innerHTML = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate Pairing Code';
+          return;
+        }
+
+        // Timeout
         if (attempts >= maxAttempts) {
           clearInterval(pollInterval); pollInterval = null;
           prog.classList.remove('show');
-          errMsg.textContent = 'Timeout: Code not received. Please try again.';
+          errMsg.textContent = '⏱ Timeout: Code not received. Make sure the bot server is running, then try again.';
           errBox.classList.add('show');
           btn.disabled = false;
           btn.innerHTML = '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate Pairing Code';
         }
-      } catch {}
+
+      } catch (fetchErr) {
+        // Log to browser console so errors are visible during debugging
+        console.error('Pairing poll error:', fetchErr.message);
+      }
     }, 3000);
 
   } catch (err) {
