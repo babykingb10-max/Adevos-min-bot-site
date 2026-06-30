@@ -247,6 +247,7 @@ app.post('/api/request-pair', async (req, res) => {
 /**
  * GET /api/get-pair-code
  * Polled by the website frontend every 3 seconds after submitting a pairing request.
+ * Also returns request status so frontend can show meaningful messages.
  */
 app.get('/api/get-pair-code', async (req, res) => {
     const cleanNumber = (req.query.number || '').replace(/[^0-9]/g, '');
@@ -254,14 +255,25 @@ app.get('/api/get-pair-code', async (req, res) => {
 
     try {
         await connectDB();
-        const pairing = await Pairing.findOne({ number: cleanNumber }).lean();
 
+        // Check if code is ready
+        const pairing = await Pairing.findOne({ number: cleanNumber }).lean();
         if (pairing?.code) {
-            res.json({ success: true, code: pairing.code });
-        } else {
-            res.json({ success: false, code: null, message: 'Code not ready yet' });
+            // Mark request as done
+            await Request.updateMany({ number: cleanNumber, status: 'pending' }, { $set: { status: 'done' } });
+            return res.json({ success: true, code: pairing.code });
         }
+
+        // Check request status for better user feedback
+        const request = await Request.findOne({ number: cleanNumber }).sort({ timestamp: -1 }).lean();
+        if (request?.status === 'failed') {
+            return res.json({ success: false, code: null, message: 'Pairing failed. Please try again.', status: 'failed' });
+        }
+
+        res.json({ success: false, code: null, message: 'Waiting for bot to generate code...', status: request?.status || 'pending' });
+
     } catch (err) {
+        console.error(`get-pair-code error: ${err.message}`);
         res.json({ success: false, message: err.message });
     }
 });
@@ -554,47 +566,115 @@ app.get('/health', async (req, res) => {
     });
 });
 
+// ─── Error capture for /api/admin/debug ──────────────────────
+const recentErrors = [];
+const _origErr = console.error.bind(console);
+console.error = (...args) => {
+    recentErrors.push({ time: new Date().toISOString(), msg: args.join(' ') });
+    if (recentErrors.length > 50) recentErrors.shift();
+    _origErr(...args);
+};
+
+app.get('/api/admin/debug', verifyToken, async (req, res) => {
+    try {
+        await connectDB();
+        const [total, active, requests, pending] = await Promise.all([
+            Session.countDocuments(),
+            Session.countDocuments({ isActive: true }),
+            Request.countDocuments(),
+            Request.countDocuments({ status: 'pending' })
+        ]);
+        res.json({
+            success: true,
+            system:   { uptime: process.uptime(), memory: process.memoryUsage(), db: mongoose.connection.readyState, server: SERVER_NAME },
+            database: { total, active, requests, pending },
+            recentErrors: recentErrors.slice(-20)
+        });
+    } catch (err) {
+        res.json({ success: false, message: err.message });
+    }
+});
+
 // ─── Trigger Bot Pairing ──────────────────────────────────────
 
 /**
  * If the website and bot run on the same Render service,
  * we can call pair.js directly.
  *
- * If they are separate services, set BOT_WEBHOOK_URL in env
- * and the website will call the bot via HTTP.
+ * If they are separate services (recommended setup), set BOT_WEBHOOK_URL
+ * in env and the website will call the bot via HTTP webhook.
  */
 async function _triggerBotPairing(number) {
     const BOT_WEBHOOK = process.env.BOT_WEBHOOK_URL;
 
     if (BOT_WEBHOOK) {
-        const axios = require('axios');
-        await axios.post(`${BOT_WEBHOOK}/internal/pair`, {
-            number,
-            secret: process.env.INTERNAL_SECRET || 'adevos-internal'
-        }, { timeout: 5000 });
+        // Separate services — call bot via HTTP webhook
+        try {
+            const axios = require('axios');
+            console.log(`📨 Triggering bot webhook for ${number} at ${BOT_WEBHOOK}/internal/pair`);
+
+            const response = await axios.post(`${BOT_WEBHOOK}/internal/pair`, {
+                number,
+                secret: process.env.INTERNAL_SECRET || 'adevos-internal'
+            }, { timeout: 10000 });
+
+            console.log(`✅ Bot webhook responded:`, response.data);
+
+        } catch (err) {
+            // This error MUST be visible — it's the #1 cause of "pending forever"
+            console.error(`❌ Bot webhook trigger FAILED for ${number}: ${err.message}`);
+            console.error(`   Check that BOT_WEBHOOK_URL is correct: ${BOT_WEBHOOK}`);
+            console.error(`   Check that the bot service is running and reachable`);
+
+            // Mark the request as failed so the frontend stops polling and shows an error
+            await Request.updateMany(
+                { number, status: 'pending' },
+                { $set: { status: 'failed' } }
+            ).catch(() => {});
+
+            throw err; // Re-throw so caller's .catch() also logs it
+        }
+
     } else {
+        // Same service — require pair.js directly
         try {
             const startpairing = require('./pair');
-            startpairing(number + '@s.whatsapp.net').catch(() => {});
-        } catch {
-            // pair.js not present in website-only repo - silently ignored
+            await startpairing(number + '@s.whatsapp.net');
+        } catch (err) {
+            console.error(`❌ Direct pairing FAILED for ${number}: ${err.message}`);
+            console.error(`   This usually means pair.js is missing from this repo,`);
+            console.error(`   OR BOT_WEBHOOK_URL needs to be set if bot runs separately.`);
+
+            await Request.updateMany(
+                { number, status: 'pending' },
+                { $set: { status: 'failed' } }
+            ).catch(() => {});
+
+            throw err;
         }
     }
 }
 
-// Internal webhook endpoint (for bot-side triggering from website)
+// Internal webhook endpoint — only used if THIS service also runs pair.js
+// (i.e. bot and website are combined in one repo/service)
 app.post('/internal/pair', async (req, res) => {
     const { number, secret } = req.body;
     const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'adevos-internal';
 
-    if (secret !== INTERNAL_SECRET) return res.json({ success: false, message: 'Unauthorized' });
+    if (secret !== INTERNAL_SECRET) {
+        console.error(`❌ Unauthorized webhook attempt for ${number}`);
+        return res.json({ success: false, message: 'Unauthorized' });
+    }
 
     try {
         const startpairing = require('./pair');
-        startpairing(number + '@s.whatsapp.net').catch(() => {});
-        res.json({ success: true });
-    } catch {
-        res.json({ success: false, message: 'pair.js not available' });
+        startpairing(number + '@s.whatsapp.net').catch(err => {
+            console.error(`❌ Webhook-triggered pairing failed [${number}]: ${err.message}`);
+        });
+        res.json({ success: true, message: 'Pairing triggered' });
+    } catch (err) {
+        console.error(`❌ /internal/pair error: ${err.message}`);
+        res.json({ success: false, message: 'pair.js not available on this service' });
     }
 });
 
