@@ -1,7 +1,7 @@
 {
-  "name": "adevos-bot-server",
-  "version": "1.0.0",
-  "description": "Adevos Min-Bot Pairing Server",
+  "name": "adevos-min-bot-website",
+  "version": "2.0.0",
+  "description": "Adevos Min-Bot Website - Pairing & Admin Panel",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -11,10 +11,11 @@
     "cors": "^2.8.5",
     "mongoose": "^8.8.1",
     "jsonwebtoken": "^9.0.2",
-    "dotenv": "^16.4.7", 
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.7"
   },
   "engines": {
-    "node": "18.x"
+    "node": ">=18.0.0"
   }
 }
