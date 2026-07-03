@@ -404,7 +404,13 @@ const tabTitles = {
   analytics: 'ANALYTICS'
 };
 
-window.onload = () => { if (token) showAdmin(); };
+window.onload = () => {
+  // Re-read token from localStorage (after redirect)
+  token = localStorage.getItem('adminToken') || null;
+  if (token) {
+    showAdmin();
+  }
+};
 
 // ─── Auth ──────────────────────────────────────────────────────
 
@@ -421,8 +427,11 @@ async function doLogin() {
     });
     const data = await res.json();
     if (data.success) {
-      token = data.token; localStorage.setItem('adminToken', token);
-      err.classList.remove('show'); showAdmin();
+      token = data.token;
+      localStorage.setItem('adminToken', token);
+      err.classList.remove('show');
+      // Force full page reload after login to ensure clean state
+      window.location.href = window.location.origin + '/admin?auth=1';
     } else {
       err.textContent = data.message || 'Login failed'; err.classList.add('show');
     }
@@ -437,8 +446,13 @@ function doLogout() {
 }
 
 function showAdmin() {
-  document.getElementById('loginWrap').style.display = 'none';
-  document.getElementById('adminWrap').classList.add('show');
+  const loginWrap = document.getElementById('loginWrap');
+  const adminWrap = document.getElementById('adminWrap');
+  if (loginWrap) loginWrap.style.display = 'none';
+  if (adminWrap) {
+    adminWrap.style.display = 'block';
+    adminWrap.classList.add('show');
+  }
   loadDashboard();
   refreshInterval = setInterval(() => {
     refreshCount++;
