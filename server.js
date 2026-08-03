@@ -135,14 +135,9 @@ async function connectDB() {
 
 // ─── JWT Middleware ───────────────────────────────────────────
 function verifyToken(req, res, next) {
-    const token = req.headers['authorization']?.split(' ')[1];
-    if (!token) return res.json({ success: false, message: 'Token required' });
-    try {
-        req.admin = jwt.verify(token, JWT_SECRET);
-        next();
-    } catch {
-        return res.json({ success: false, message: 'Invalid or expired token' });
-    }
+    // Auth removed from admin panel — pass through directly
+    req.admin = { username: ADMIN_USERNAME };
+    next();
 }
 
 // ─── Helper ───────────────────────────────────────────────────
@@ -311,13 +306,9 @@ app.get('/api/request-status', async (req, res) => {
 // ─── ADMIN LOGIN ──────────────────────────────────────────────
 
 app.post('/api/admin/login', (req, res) => {
-    const { username, password } = req.body;
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-        const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '12h' });
-        res.json({ success: true, token });
-    } else {
-        res.json({ success: false, message: 'Invalid username or password' });
-    }
+    // Auth removed — always succeed
+    const token = jwt.sign({ username: ADMIN_USERNAME }, JWT_SECRET, { expiresIn: '365d' });
+    res.json({ success: true, token });
 });
 
 // ─── ADMIN ROUTES ─────────────────────────────────────────────
@@ -326,7 +317,7 @@ app.post('/api/admin/login', (req, res) => {
  * GET /api/admin/stats
  * Full dashboard statistics for the admin panel.
  */
-app.get('/api/admin/stats', verifyToken, async (req, res) => {
+app.get('/api/admin/stats', async (req, res) => {
     try {
         await connectDB();
 
@@ -391,7 +382,7 @@ app.get('/api/admin/stats', verifyToken, async (req, res) => {
  * List all WhatsApp sessions with their status.
  * New endpoint - was not available in the Firebase version.
  */
-app.get('/api/admin/sessions', verifyToken, async (req, res) => {
+app.get('/api/admin/sessions', async (req, res) => {
     try {
         await connectDB();
         const sessions = await Session.find(
@@ -409,7 +400,7 @@ app.get('/api/admin/sessions', verifyToken, async (req, res) => {
  * DELETE /api/admin/sessions/:sessionId
  * Delete a single session by its JID.
  */
-app.delete('/api/admin/sessions/:sessionId', verifyToken, async (req, res) => {
+app.delete('/api/admin/sessions/:sessionId', async (req, res) => {
     try {
         await connectDB();
         const sessionId = decodeURIComponent(req.params.sessionId);
@@ -425,7 +416,7 @@ app.delete('/api/admin/sessions/:sessionId', verifyToken, async (req, res) => {
  * Delete inactive and logged-out sessions to free up space.
  * Equivalent of /clean Telegram command but accessible from the admin panel.
  */
-app.post('/api/admin/clean', verifyToken, async (req, res) => {
+app.post('/api/admin/clean', async (req, res) => {
     try {
         await connectDB();
 
@@ -462,7 +453,7 @@ app.post('/api/admin/clean', verifyToken, async (req, res) => {
 /**
  * GET /api/admin/users
  */
-app.get('/api/admin/users', verifyToken, async (req, res) => {
+app.get('/api/admin/users', async (req, res) => {
     try {
         await connectDB();
         const users = await User.find().sort({ lastPaired: -1 }).lean();
@@ -475,7 +466,7 @@ app.get('/api/admin/users', verifyToken, async (req, res) => {
 /**
  * POST /api/admin/block
  */
-app.post('/api/admin/block', verifyToken, async (req, res) => {
+app.post('/api/admin/block', async (req, res) => {
     const { number, reason } = req.body;
     if (!number) return res.json({ success: false, message: 'Number is required' });
     try {
@@ -494,7 +485,7 @@ app.post('/api/admin/block', verifyToken, async (req, res) => {
 /**
  * POST /api/admin/unblock
  */
-app.post('/api/admin/unblock', verifyToken, async (req, res) => {
+app.post('/api/admin/unblock', async (req, res) => {
     const { number } = req.body;
     if (!number) return res.json({ success: false, message: 'Number is required' });
     try {
@@ -509,7 +500,7 @@ app.post('/api/admin/unblock', verifyToken, async (req, res) => {
 /**
  * GET /api/admin/blocked
  */
-app.get('/api/admin/blocked', verifyToken, async (req, res) => {
+app.get('/api/admin/blocked', async (req, res) => {
     try {
         await connectDB();
         const blocked = await Blocked.find().sort({ blockedAt: -1 }).lean();
@@ -523,7 +514,7 @@ app.get('/api/admin/blocked', verifyToken, async (req, res) => {
  * POST /api/admin/delete-user
  * Deletes a user record, their pairing code, and their session.
  */
-app.post('/api/admin/delete-user', verifyToken, async (req, res) => {
+app.post('/api/admin/delete-user', async (req, res) => {
     const { number } = req.body;
     if (!number) return res.json({ success: false, message: 'Number is required' });
     try {
@@ -543,7 +534,7 @@ app.post('/api/admin/delete-user', verifyToken, async (req, res) => {
  * GET /api/admin/analytics
  * Pairing counts per day for the last 7 days (bar chart data).
  */
-app.get('/api/admin/analytics', verifyToken, async (req, res) => {
+app.get('/api/admin/analytics', async (req, res) => {
     try {
         await connectDB();
 
@@ -590,7 +581,7 @@ console.error = (...args) => {
     _origErr(...args);
 };
 
-app.get('/api/admin/debug', verifyToken, async (req, res) => {
+app.get('/api/admin/debug', async (req, res) => {
     try {
         await connectDB();
         const [total, active, requests, pending] = await Promise.all([
@@ -622,7 +613,7 @@ app.get('/api/admin/debug', verifyToken, async (req, res) => {
  *   source - optional filter: 'bot' | 'website' | 'pairing'
  *   limit  - max results, default 100, max 500
  */
-app.get('/api/admin/logs', verifyToken, async (req, res) => {
+app.get('/api/admin/logs', async (req, res) => {
     try {
         await connectDB();
 
@@ -658,7 +649,7 @@ app.get('/api/admin/logs', verifyToken, async (req, res) => {
  * DELETE /api/admin/logs
  * Clear all stored logs (admin only).
  */
-app.delete('/api/admin/logs', verifyToken, async (req, res) => {
+app.delete('/api/admin/logs', async (req, res) => {
     try {
         await connectDB();
         const result = await Log.deleteMany({});
