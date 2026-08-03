@@ -19,21 +19,6 @@ body{font-family:"Inter",sans-serif;background:var(--bg);color:var(--text);min-h
 body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(rgba(34,197,94,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(34,197,94,.018) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0;}
 ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--g2);border-radius:2px;}
 
-/* LOGIN */
-.login-wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;background:var(--bg);}
-.login-box{background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:32px 24px;width:92%;max-width:360px;position:relative;overflow:hidden;}
-.login-box::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--g),transparent);}
-.login-logo{text-align:center;margin-bottom:20px;}
-.login-logo h1{font-family:"Orbitron",monospace;font-size:16px;font-weight:900;color:var(--g);text-shadow:0 0 15px var(--glow);}
-.login-logo p{font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--text3);letter-spacing:2px;margin-top:4px;}
-.fl{display:block;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:6px;margin-top:14px;}
-.fi{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:"JetBrains Mono",monospace;font-size:14px;padding:12px 14px;outline:none;transition:border-color .2s;}
-.fi:focus{border-color:var(--border2);}
-.login-btn{width:100%;margin-top:20px;padding:14px;background:var(--g);color:#000;border:none;border-radius:10px;cursor:pointer;font-family:"Orbitron",monospace;font-size:11px;font-weight:700;letter-spacing:2px;transition:all .25s;}
-.login-btn:hover{box-shadow:0 0 20px var(--glow);}
-.login-err{display:none;margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--red);}
-.login-err.show{display:block;}
-
 /* ADMIN WRAP */
 .admin-wrap{display:none;min-height:100vh;}
 .admin-wrap.show{display:block;}
@@ -222,24 +207,8 @@ body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(
 </head>
 <body>
 
-<!-- ═══ LOGIN ═══ -->
-<div class="login-wrap" id="loginWrap">
-  <div class="login-box">
-    <div class="login-logo">
-      <h1>ADMIN PANEL</h1>
-      <p>ADEVOS-X TECH · SECURE ACCESS</p>
-    </div>
-    <label class="fl">Username</label>
-    <input class="fi" type="text" id="loginUser" placeholder="Enter username" autocomplete="off">
-    <label class="fl">Password</label>
-    <input class="fi" type="password" id="loginPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="login-btn" onclick="doLogin()">LOGIN</button>
-    <div class="login-err" id="loginErr"></div>
-  </div>
-</div>
-
 <!-- ═══ ADMIN ═══ -->
-<div class="admin-wrap" id="adminWrap">
+<div class="admin-wrap show" id="adminWrap">
 
   <div class="topbar">
     <div class="tb-left">
@@ -248,7 +217,7 @@ body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(
     </div>
     <div class="tb-right">
       <a class="back-btn" href="/">← Site</a>
-      <button class="logout-btn" onclick="doLogout()">LOGOUT</button>
+
       <div class="ham-btn" onclick="openDrawer()"><span></span><span></span><span></span></div>
     </div>
   </div>
@@ -272,7 +241,7 @@ body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(
     <div class="drawer-item"     id="di-blocked"    onclick="goTab('blocked')">🚫 Blocked Numbers</div>
     <div class="drawer-item"     id="di-analytics"  onclick="goTab('analytics')">📈 Analytics</div>
     <div class="drawer-div"></div>
-    <div class="drawer-item" onclick="doLogout()">🚪 Logout</div>
+
   </div>
 
   <div class="page-indicator">
@@ -388,7 +357,7 @@ body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(
 
 <script>
 const SERVER_URL = '';
-let token           = localStorage.getItem('adminToken') || null;
+let token           = 'no-auth-required';
 let allUsers        = [];
 let allSessions     = [];
 let refreshInterval = null;
@@ -405,50 +374,20 @@ const tabTitles = {
 };
 
 window.onload = () => {
-  // Re-read token from localStorage (after redirect)
-  token = localStorage.getItem('adminToken') || null;
-  if (token) {
-    showAdmin();
-  }
+  // No auth required — load admin directly
+  showAdmin();
 };
 
 // ─── Auth ──────────────────────────────────────────────────────
 
-async function doLogin() {
-  const username = document.getElementById('loginUser').value.trim();
-  const password = document.getElementById('loginPass').value.trim();
-  const err      = document.getElementById('loginErr');
-  if (!username || !password) { err.textContent='Enter username and password'; err.classList.add('show'); return; }
 
-  try {
-    const res  = await fetch(SERVER_URL + '/api/admin/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await res.json();
-    if (data.success) {
-      token = data.token;
-      localStorage.setItem('adminToken', token);
-      err.classList.remove('show');
-      // Force full page reload after login to ensure clean state
-      window.location.href = window.location.origin + '/admin?auth=1';
-    } else {
-      err.textContent = data.message || 'Login failed'; err.classList.add('show');
-    }
-  } catch (e) { err.textContent = 'Server error. Try again.'; err.classList.add('show'); }
-}
 
 function doLogout() {
-  token = null; localStorage.removeItem('adminToken');
-  if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
-  document.getElementById('adminWrap').classList.remove('show');
-  document.getElementById('loginWrap').style.display = 'flex';
+  // No-op — auth removed
 }
 
 function showAdmin() {
-  const loginWrap = document.getElementById('loginWrap');
   const adminWrap = document.getElementById('adminWrap');
-  if (loginWrap) loginWrap.style.display = 'none';
   if (adminWrap) {
     adminWrap.style.display = 'block';
     adminWrap.classList.add('show');
@@ -506,10 +445,7 @@ function timeAgo(ts) {
 }
 
 function handleAuthError(data) {
-  if (data.message && data.message.includes('Token')) {
-    toast('Session expired. Please login again.', true);
-    setTimeout(doLogout, 1500);
-  }
+  // Auth removed — no-op
 }
 
 function toast(msg, isErr) {
